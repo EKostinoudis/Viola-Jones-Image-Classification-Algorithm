@@ -29,10 +29,23 @@ class Rectangle:
             returns:
                 value of the sum of all points in the rectagle region
             """
-            return  ii[self.y]              [self.x] +\
-                    ii[self.y + self.height][self.x + self.width] -\
-                    ii[self.y]              [self.x + self.width] -\
-                    ii[self.y + self.height][self.x]
+
+            if self.x == 0:
+                if self.y != 0:
+                    value = ii[self.y + self.height  - 1][self.x + self.width - 1] -\
+                            ii[self.y - 1]               [self.x + self.width - 1]
+                else:
+                    value = ii[self.y + self.height - 1][self.x + self.width - 1]
+            elif self.y == 0:
+                value = ii[self.y + self.height - 1][self.x + self.width - 1] -\
+                        ii[self.y + self.height - 1][self.x - 1]
+            else:         
+                value = ii[self.y - 1]              [self.x - 1] +\
+                        ii[self.y + self.height - 1][self.x + self.width - 1] -\
+                        ii[self.y - 1]              [self.x + self.width - 1] -\
+                        ii[self.y + self.height - 1][self.x - 1]    
+
+            return value
 
 class Feature:
     def __init__(self, ftype, x, y, width, height):
@@ -91,14 +104,14 @@ class Feature:
                 self.negative.append(Rectangle(x, y, halfWidth, halfHeight))
                 self.negative.append(Rectangle(x + halfWidth, y + halfHeight, halfWidth, halfHeight))
             else:
-                raise ValueError('Width and height must be multiples of 23')
+                raise ValueError('Width and height must both be multiples of 2')
         else:
             raise ValueError('ftype must be an integer in the range [1,4]')
 
     def calculate(self, ii):
-        pos = [x.calculateRect(ii) for x in self.positive]
-        neg = [x.calculateRect(ii) for x in self.negative]
-        return [pos, neg]
+        pos = sum([x.calculateRect(ii) for x in self.positive])
+        neg = sum([x.calculateRect(ii) for x in self.negative])
+        return pos - neg
          
 
     
