@@ -95,8 +95,10 @@ class Feature:
         else:
             raise ValueError('ftype must be an integer in the range [1,4]')
 
-    # def calculate(self, ii):
-        
+    def calculate(self, ii):
+        pos = [x.calculateRect(ii) for x in self.positive]
+        neg = [x.calculateRect(ii) for x in self.negative]
+        return [pos, neg]
          
 
     
