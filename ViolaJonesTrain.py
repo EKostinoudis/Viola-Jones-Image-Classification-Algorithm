@@ -112,7 +112,7 @@ class ViolaJonesTrain:
             imageValues.append(feature.calculate(ii))
         return imageValues
 
-    def trainWeakClassifier(self, appliedFeatures, weights):
+    def trainWeakClassifiers(self, appliedFeatures, weights):
         """
         This method trains a weak classifier.
 
@@ -131,36 +131,49 @@ class ViolaJonesTrain:
             else:
                 negWeightSum += weight
 
-        weakClassifiers = []
+        pool = Pool(self.threads)
+        weakClassifiers = pool.map(
+                                   partial(self.trainUnitWeakClassifier, imageClass = self.imageClass, weights = weights, 
+                                           posWeightSum = posWeightSum, negWeightSum = negWeightSum), 
+                                   enumerate(appliedFeatures)
+                                   )
 
-        for index, feature in enumerate(appliedFeatures):
-            # sorted based on feature value
-            sortedValues = sorted(zip(feature, weights, self.imageClass), key = lambda x: x[0])
-
-            currentPosSum = currentNegSum = currentPosWeights = currentNegWeights = 0
-
-            minError = float('inf')
-
-            for featureValue, weight, imClass in sortedValues:
-                if imClass == 1:
-                    currentPosSum += 1
-                    currentPosWeights += weight
-                else:
-                    currentNegSum += 1
-                    currentNegWeights += weight
-
-                error = min(posWeightSum + currentNegWeights - currentPosWeights, 
-                            negWeightSum + currentPosWeights - currentNegWeights 
-                            )
-                
-                if error < minError:
-                    minError = error
-                    theta = featureValue # threshold
-                    p = 1 if currentPosSum > currentNegSum else -1 # polarity
-
-            weakClassifiers.append((minError, theta, p, index))
-                
         return weakClassifiers
+
+
+    @staticmethod
+    def trainUnitWeakClassifier(enumeratedFeatures, imageClass, weights, posWeightSum, negWeightSum):
+        """
+        This method calculates the best classifier for a feature
+        """
+        index, feature = enumeratedFeatures
+
+        # sorted based on feature value
+        sortedValues = sorted(zip(feature, weights, imageClass), key = lambda x: x[0])
+
+        currentPosSum = currentNegSum = currentPosWeights = currentNegWeights = 0
+
+        minError = float('inf')
+
+        for featureValue, weight, imClass in sortedValues:
+            if imClass == 1:
+                currentPosSum += 1
+                currentPosWeights += weight
+            else:
+                currentNegSum += 1
+                currentNegWeights += weight
+
+            error = min(posWeightSum + currentNegWeights - currentPosWeights, 
+                        negWeightSum + currentPosWeights - currentNegWeights 
+                        )
+            
+            if error < minError:
+                minError = error
+                theta = featureValue # threshold
+                p = 1 if currentPosSum > currentNegSum else -1 # polarity
+
+        return (minError, theta, p, index)
+        
 
     def trainModel(self):
         # init weights
@@ -178,7 +191,7 @@ class ViolaJonesTrain:
 
         # Test weak classifiers
         print('weak')
-        weakClassifiers = self.trainWeakClassifier(featureValues, weights)
+        weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
 
         # return features
         return weakClassifiers
