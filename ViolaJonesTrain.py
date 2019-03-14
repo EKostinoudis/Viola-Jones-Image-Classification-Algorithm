@@ -93,14 +93,17 @@ class ViolaJonesTrain:
         """
         Apply all features to each training image
 
+        Arguments:
+            features: list of Feature objects
+
         Returns:
-            2D list with the values of the features
+            2D numpy array with the values of the features
         """
 
         pool = Pool(self.threads)
         featureValues = pool.map(partial(self.calculateFeatures, features=features), self.trainingData)
 
-        return featureValues
+        return np.array(featureValues).T
 
     @staticmethod
     def calculateFeatures(ii, features):
@@ -109,6 +112,55 @@ class ViolaJonesTrain:
             imageValues.append(feature.calculate(ii))
         return imageValues
 
+    def trainWeakClassifier(self, appliedFeatures, weights):
+        """
+        This method trains a weak classifier.
+
+        Arguments:
+            appliedFeatures: 2D list of the values for every feature in every imagea
+            weights: list with the weights of every image
+
+        Returns:
+            weakClassifiers: list of tuples containing the error, threshold, polarity 
+                and feature index of every weak classifier
+        """
+        posWeightSum = negWeightSum = 0
+        for imClass, weight in zip(self.imageClass, weights):
+            if imClass == 1:
+                posWeightSum += weight
+            else:
+                negWeightSum += weight
+
+        weakClassifiers = []
+
+        for index, feature in enumerate(appliedFeatures):
+            # sorted based on feature value
+            sortedValues = sorted(zip(feature, weights, self.imageClass), key = lambda x: x[0])
+
+            currentPosSum = currentNegSum = currentPosWeights = currentNegWeights = 0
+
+            minError = float('inf')
+
+            for featureValue, weight, imClass in sortedValues:
+                if imClass == 1:
+                    currentPosSum += 1
+                    currentPosWeights += weight
+                else:
+                    currentNegSum += 1
+                    currentNegWeights += weight
+
+                error = min(posWeightSum + currentNegWeights - currentPosWeights, 
+                            negWeightSum + currentPosWeights - currentNegWeights 
+                            )
+                
+                if error < minError:
+                    minError = error
+                    theta = featureValue # threshold
+                    p = 1 if currentPosSum > currentNegSum else -1 # polarity
+
+            weakClassifiers.append((minError, theta, p, index))
+                
+        return weakClassifiers
 
     def trainModel(self):
         # init weights
@@ -124,5 +176,9 @@ class ViolaJonesTrain:
         print("Calculating features for all images.")
         featureValues = self.applyFeatures(features)
 
+        # Test weak classifiers
+        print('weak')
+        weakClassifiers = self.trainWeakClassifier(featureValues, weights)
+
         # return features
-        return featureValues
+        return weakClassifiers
