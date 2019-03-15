@@ -174,6 +174,48 @@ class ViolaJonesTrain:
 
         return (minError, theta, p, index)
         
+    def bestWeakClassifier(self, weakClassifiers, featureValues, weights):
+        """
+        This method finds the best weak classifier.
+
+        Arguments:
+            weakClassifiers: list with the values of all weak classifiers
+            featureValues: 2D list of the values for every feature in every imagea
+            weights: list with the weights of every image
+
+        Returns:
+            tuple with the (threshold, polarity, index, epsilon) of the best classifier
+        """
+        pool = Pool(self.threads)
+        weakErrors = pool.map(
+                              partial(self.calculateWeakError, featureValues = featureValues,
+                                      weights = weights, imageClass = self.imageClass
+                                     ),
+                              weakClassifiers
+                             )
+
+        # Find the index of the best weak classifier
+        minWeak = min(enumerate(weakErrors), key = lambda x: x[1])
+
+        return weakClassifiers[minWeak[0]][1:] + tuple([minWeak[1][1]])
+
+    @staticmethod
+    def calculateWeakError(weakClassifier, featureValues, weights, imageClass):
+        """
+        This method calculates the error for a weak classifier
+        """
+        _, theta, p, indexClassifier = weakClassifier
+        error = 0.0
+        epsilon = []
+
+        for index, f in enumerate(featureValues[indexClassifier]):
+            h = 1 if p * f < p * theta else 0
+            e = abs(h - imageClass[index])
+            epsilon.append(e)
+            error += weights[index] * e
+
+        return (error, epsilon)
+
 
     def trainModel(self):
         # init weights
@@ -193,5 +235,9 @@ class ViolaJonesTrain:
         print('weak')
         weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
 
+        print('best weak')
+        # (threshold, polarity, feature index, epsilon) of the best classifier
+        bestWeak = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+
         # return features
-        return weakClassifiers
+        return bestWeak
