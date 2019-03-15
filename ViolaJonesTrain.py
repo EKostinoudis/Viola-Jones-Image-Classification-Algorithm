@@ -13,8 +13,8 @@ class ViolaJonesTrain:
         threads: number of threads to run parallel (on some computations)
         poitivePath: folder with the positive images
         negativePath: folder with the negative images
-        maxPositiveImages: mamimum number of positive images (-1: all posible)
-        maxNegativeImages: mamimum number of negative images (-1: all posible)
+        maxPositiveImages: maximum number of positive images (-1: all posible)
+        maxNegativeImages: maximum number of negative images (-1: all posible)
 
         tainingData: list with the integral image of the training data and the type of the image
                      1 for positve
