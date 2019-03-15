@@ -154,6 +154,7 @@ class ViolaJonesTrain:
         currentPosSum = currentNegSum = currentPosWeights = currentNegWeights = 0
 
         minError = float('inf')
+        theta = p = 0
 
         for featureValue, weight, imClass in sortedValues:
             if imClass == 1:
@@ -165,7 +166,7 @@ class ViolaJonesTrain:
 
             error = min(posWeightSum + currentNegWeights - currentPosWeights, 
                         negWeightSum + currentPosWeights - currentNegWeights 
-                        )
+                       )
             
             if error < minError:
                 minError = error
@@ -184,7 +185,7 @@ class ViolaJonesTrain:
             weights: list with the weights of every image
 
         Returns:
-            tuple with the (threshold, polarity, index, epsilon) of the best classifier
+            tuple with the ((threshold, polarity, index),(error, epsilon)) of the best classifier
         """
         pool = Pool(self.threads)
         weakErrors = pool.map(
@@ -197,7 +198,7 @@ class ViolaJonesTrain:
         # Find the index of the best weak classifier
         minWeak = min(enumerate(weakErrors), key = lambda x: x[1])
 
-        return weakClassifiers[minWeak[0]][1:] + tuple([minWeak[1][1]])
+        return (weakClassifiers[minWeak[0]][1:], minWeak[1])
 
     @staticmethod
     def calculateWeakError(weakClassifier, featureValues, weights, imageClass):
@@ -218,11 +219,6 @@ class ViolaJonesTrain:
 
 
     def trainModel(self):
-        # init weights
-        weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
-                                  np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
-                                  ))
-
         # Calculate all posible features
         print("Creating features.")
         features = self.createFeatures()
@@ -231,13 +227,49 @@ class ViolaJonesTrain:
         print("Calculating features for all images.")
         featureValues = self.applyFeatures(features)
 
-        # Test weak classifiers
-        print('weak')
-        weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
+        #################################################################
+        # AdaBoost algorithm
+        
+        alphas = []
+        bestWeakClassifiers = []
 
-        print('best weak')
-        # (threshold, polarity, feature index, epsilon) of the best classifier
-        bestWeak = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+        # init weights
+        weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
+                                  np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
+                                  ))
+
+        for itter in range(self.T):
+            print('{} out of {} weak clasifiers.'.format(itter + 1, self.T))
+
+            # Normalize weights
+            weights = weights / np.sum(weights)
+
+            # Train all weak classifiers
+            print("\tTraining weak classifiers.")
+            weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
+
+            # ((threshold, polarity, feature index),(error, epsilon)) of the best classifier
+            print("\tChoosing the best.")
+            bestWeak, (error, epsilon) = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+
+            epsilon = np.array(epsilon)
+
+            # Make sure error is not 0
+            if error == 0.0:
+                error = np.finfo(np.float32).eps
+
+            beta = error / (1.0 - error)
+
+            # Calculate new weights
+            weights = weights * (beta ** (1 - epsilon))
+
+            # Calculate alpha
+            alphas.append(np.log10(1 / beta))
+
+            bestWeakClassifiers.append(bestWeak)
+
+        #################################################################
+        # End of AdaBoost algorithm
 
         # return features
-        return bestWeak
+        return (alphas, bestWeakClassifiers)
