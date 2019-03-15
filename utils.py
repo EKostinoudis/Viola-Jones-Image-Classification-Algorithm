@@ -114,4 +114,76 @@ class Feature:
         return pos - neg
          
 
+class WeakClassifier:
+    def __init__(self, feature, threshold, polarity):
+        """
+        feature: Feature (class) object
+        threshold: threshold of the classifier
+        polarity: polarity of the classifier
+        """
+        self.feature = feature
+        self.threshold = threshold
+        self.polarity = polarity
+
+    def classifie(self, ii):
+        """
+        Classifies an image.
+
+        Arguments:
+            ii: integral image
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
+        f = self.feature.calculate(ii)
+        return 1 if self.polarity * f < self.polarity * self.threshold else 0
+
+class StrongClassifier:
+    def __init__(self, alphas, features, thresholds, polarities):
+        """
+        alphas: list of weights of the weak classifiers
+        features: list of Feature (class) objects
+        thresholds: list of thresholds of the weak classifiers
+        polarities: list of polarities of the weak classifiers
+
+        weakClassifiers: list of WeakClassifier objects
+        """
+        self.alphas = []
+        self.weakClassifiers = []
+
+        if type(alphas) is list and type(features) is list \
+            and type(polarities) is list and type(thresholds) is list:
+            
+            self.alphas.extend(alphas)
+            
+            for polarity, threshold, feature in zip(polarities, thresholds, features):
+                self.weakClassifiers.append(WeakClassifier(feature, threshold, polarity))
+
+        else:
+            raise TypeError('All arguments must be type: list')
+
+    def addWeakClassifier(self, alpha, feature, threshold, polarity):
+        """
+        Adds a value weak classifier to the strong
+
+        Arguments:
+            alpha: weight of the weak classifier
+            feature: Feature (class) object
+            threshold: threshold of the classifier
+            polarity: polarity of the classifier
+        """
+        self.alphas.append(alpha)
+        self.weakClassifiers.append(WeakClassifier(feature, threshold, polarity))
+
+    def classify(self, ii):
+        sumAlphas = sum(self.alphas)
+        sumH = 0
+        for index, weak in enumerate(self.weakClassifiers):
+            sumH += self.alphas[index] * weak.classifie(ii)
+
+        return 1 if sumH >= 0.5 * sumAlphas else 0
+                
+            
+
     

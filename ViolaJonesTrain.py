@@ -1,4 +1,4 @@
-from utils import readImage, integralImage, Feature
+from utils import readImage, integralImage, Feature, StrongClassifier
 import numpy as np
 from os import listdir
 from multiprocessing import Pool
@@ -221,11 +221,11 @@ class ViolaJonesTrain:
     def trainModel(self):
         # Calculate all posible features
         print("Creating features.")
-        features = self.createFeatures()
+        allFeatures = self.createFeatures()
 
         # Calculate for every image the value of every feature
         print("Calculating features for all images.")
-        featureValues = self.applyFeatures(features)
+        featureValues = self.applyFeatures(allFeatures)
 
         #################################################################
         # AdaBoost algorithm
@@ -268,8 +268,36 @@ class ViolaJonesTrain:
 
             bestWeakClassifiers.append(bestWeak)
 
-        #################################################################
         # End of AdaBoost algorithm
+        #################################################################
+        print('End of AdaBoost.')
+
+        # Construct Stong classifier object
+        features = []
+        thresholds = []
+        polarities = []
+
+        for weak in bestWeakClassifiers:
+            threshold, polarity, index = weak
+            features.append(allFeatures[index])
+            polarities.append(polarity)
+            thresholds.append(threshold)
+
+        strongClassifier = StrongClassifier(alphas, features, thresholds, polarities)
+
+        tp = tn = fp = fn = 0
+        for imClass, ii in zip(self.imageClass, self.trainingData):
+            retClass = strongClassifier.classify(ii)
+            if retClass == imClass:
+                if retClass == 1:
+                    tp += 1
+                else:
+                    tn += 1
+            elif retClass == 1:
+                fp += 1
+            else:
+                fn += 1
+                
 
         # return features
-        return (alphas, bestWeakClassifiers)
+        return (tp, tn, fp, fn)
