@@ -115,7 +115,7 @@ class ViolaJonesTrain:
         This method trains a weak classifier.
 
         Arguments:
-            appliedFeatures: 2D list of the values for every feature in every imagea
+            appliedFeatures: 2D list of the values for every feature in every image
             weights: list with the weights of every image
 
         Returns:
@@ -294,87 +294,169 @@ class ViolaJonesTrain:
 
         return (strongClassifier)
 
+    def evaluateClassifier(self, featureValues, alphas, features, thresholds, polarities, s):
+        """
+        For every image find the false positives, the true positives and the true negatives
 
-    def trainModel(self):
-        # # Calculate all posible features
-        # print("Creating features.")
-        # allFeatures = self.createFeatures()
+        Arguments:
+            featureValues: 2D list of the values for every feature in every image
+            alphas: list of weights of the weak classifiers
+            features: list of indexes to a feature in featureValues of the weak classifiers
+            thresholds: list of thresholds of the weak classifiers
+            polarities: list of polarities of the weak classifiers
+            s: shift of the clasifier
 
-        # # Calculate for every image the value of every feature
-        # print("Calculating features for all images.")
-        # featureValues = self.applyFeatures(allFeatures)
-
-        # #################################################################
-        # # AdaBoost algorithm
+        Returns:
+            tuple with (
+                        number of true positives, 
+                        number of false negatives,
+                        list of image indexes of the true negatives 
+                       )
+        """
+        # true positive, false positive 
+        tp, fp = 0, 0
         
-        # alphas = []
-        # bestWeakClassifiers = []
+        # true negative index 
+        tnIndex = []
 
-        # # init weights
-        # weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
-        #                           np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
-        #                           ))
+        for image in range(featureValues.shape[1]):
+            sumAlphas = sum(alphas)
+            sumH = 0
+            
+            for alpha, feature, threshold, polarity in zip(alphas, features, thresholds, polarities):
+                h = 1 if polarity * featureValues[feature, image] < polarity * threshold else 0
+                sumH += alpha * (h + s)
 
-        # for itter in range(self.T):
-        #     print('{} out of {} weak clasifiers.'.format(itter + 1, self.T))
+            resClass = 1 if sumH >= 0.5 * sumAlphas else 0
 
-        #     # Normalize weights
-        #     weights = weights / np.sum(weights)
+            if self.imageClass[image] == 0 and resClass == 1: 
+                # false positive
+                fp += 1
+            elif self.imageClass[image] == 1 and resClass == 1:
+                # true positive
+                tp += 1
+            elif self.imageClass[image] == 0 and resClass == 0:
+                # true negative
+                tnIndex.append(image)
 
-        #     # Train all weak classifiers
-        #     print("\tTraining weak classifiers.")
-        #     weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
+        return (tp, fp, tnIndex)
 
-        #     # ((threshold, polarity, feature index),(error, epsilon)) of the best classifier
-        #     print("\tChoosing the best.")
-        #     bestWeak, (error, epsilon) = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+    def cascadeModelTrain(self, Ftarget, f, d):
+        """
+        Arguments:
+            Ftarget: overall false positive rate
+            f: maximum acceptable false positive rate per layer
+            d: minimum acceptable detection rate per layer
+        """
+        # Calculate all posible features
+        print("Creating features.")
+        allFeatures = self.createFeatures()
 
-        #     epsilon = np.array(epsilon)
+        # Calculate for every image the value of every feature
+        print("Calculating features for all images.")
+        featureValues = self.applyFeatures(allFeatures)
+        
+        F = 1.0 # false positive rate
+        D = 1.0 # detection rate
 
-        #     # Make sure error is not 0
-        #     if error == 0.0:
-        #         error = np.finfo(np.float32).eps
+        strongClassifiers = []
 
-        #     beta = error / (1.0 - error)
+        itteration = 0
+        while True:
+            itteration += 1
+            print("1 strong classifier.")
 
-        #     # Calculate new weights
-        #     weights = weights * (beta ** (1 - epsilon))
+            s = 0 # strong classifier shift
+            alphas = []
+            features = []
+            featuresIndex = []
+            thresholds = []
+            polarities = []
 
-        #     # Calculate alpha
-        #     alphas.append(np.log10(1 / beta))
+            # init weights
+            weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
+                                    np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
+                                    ))
 
-        #     bestWeakClassifiers.append(bestWeak)
+            Fprev = F
+            Dprev = D
 
-        # # End of AdaBoost algorithm
-        # #################################################################
-        # print('End of AdaBoost.')
-
-        # # Construct Stong classifier object
-        # features = []
-        # thresholds = []
-        # polarities = []
-
-        # for weak in bestWeakClassifiers:
-        #     threshold, polarity, index = weak
-        #     features.append(allFeatures[index])
-        #     polarities.append(polarity)
-        #     thresholds.append(threshold)
-
-        # strongClassifier = StrongClassifier(alphas, features, thresholds, polarities)
-
-        # # tp = tn = fp = fn = 0
-        # # for imClass, ii in zip(self.imageClass, self.trainingData):
-        # #     retClass = strongClassifier.classify(ii)
-        # #     if retClass == imClass:
-        # #         if retClass == 1:
-        # #             tp += 1
-        # #         else:
-        # #             tn += 1
-        # #     elif retClass == 1:
-        # #         fp += 1
-        # #     else:
-        # #         fn += 1
+            innerItter = 0
+            while F > Fprev * f:
+                innerItter += 1
+                #################################################################
+                # AdaBoost algorithm
                 
+                print("\t{} weak clasifiers.".format(innerItter))
 
-        # # return features
-        # return (strongClassifier)
+                # Normalize weights
+                weights = weights / np.sum(weights)
+
+                # Train all weak classifiers
+                # print("\t\tTraining weak classifiers.")
+                weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
+
+                # ((threshold, polarity, feature index),(error, epsilon)) of the best classifier
+                # print("\t\tChoosing the best.")
+                (threshold, polarity, index), (error, epsilon) = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+
+                epsilon = np.array(epsilon)
+
+                # Make sure error is not 0
+                if error == 0.0:
+                    error = np.finfo(np.float32).eps
+
+                beta = error / (1.0 - error)
+
+                # Calculate new weights
+                weights = weights * (beta ** (1 - epsilon))
+
+                # Calculate alpha
+                alphas.append(np.log10(1 / beta))
+
+                features.append(allFeatures[index])
+                featuresIndex.append(index)
+                polarities.append(polarity)
+                thresholds.append(threshold)
+
+                # End of AdaBoost algorithm
+                #################################################################
+
+                # evaluate classifier
+                tp, fp, tnIndex = self.evaluateClassifier(featureValues, alphas, featuresIndex, thresholds, polarities, s)
+
+                # false positive rate
+                F = fp / self.negativeNumber
+
+                # detection rate
+                D = tp / (self.positveNumber + self.negativeNumber)
+
+                while D < d * Dprev and s > -1:
+                    s -= 0.01
+    
+                    # evaluate classifier
+                    tp, fp, tnIndex = self.evaluateClassifier(featureValues, alphas, featuresIndex, thresholds, polarities, s)
+
+                    # false positive rate
+                    F = fp / self.negativeNumber
+
+                    # detection rate
+                    D = tp / (self.positveNumber + self.negativeNumber)
+
+            # Construct Stong classifier object
+            strongClassifiers.append(StrongClassifier(alphas, features, thresholds, polarities, s))
+
+            if F > Ftarget:
+                # delete true negatives
+                featureValues = np.delete(featureValues, tnIndex, 1)
+                self.negativeNumber -= len(tnIndex)
+                for index in sorted(tnIndex, reverse=True):
+                    del self.imageClass[index]
+
+                if self.negativeNumber == 0:
+                    print("0 negative images left.")
+                    break
+            else:
+                break
+
+        return strongClassifiers
