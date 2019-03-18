@@ -140,17 +140,19 @@ class WeakClassifier:
         return 1 if self.polarity * f < self.polarity * self.threshold else 0
 
 class StrongClassifier:
-    def __init__(self, alphas, features, thresholds, polarities):
+    def __init__(self, alphas, features, thresholds, polarities, s = 0):
         """
         alphas: list of weights of the weak classifiers
         features: list of Feature (class) objects
         thresholds: list of thresholds of the weak classifiers
         polarities: list of polarities of the weak classifiers
+        s: shift of the clasifier
 
         weakClassifiers: list of WeakClassifier objects
         """
         self.alphas = []
         self.weakClassifiers = []
+        self.s = s
 
         if type(alphas) is list and type(features) is list \
             and type(polarities) is list and type(thresholds) is list:
@@ -176,11 +178,14 @@ class StrongClassifier:
         self.alphas.append(alpha)
         self.weakClassifiers.append(WeakClassifier(feature, threshold, polarity))
 
+    def changeShift(self, s):
+        self.s = s
+
     def classify(self, ii):
         sumAlphas = sum(self.alphas)
         sumH = 0
         for index, weak in enumerate(self.weakClassifiers):
-            sumH += self.alphas[index] * weak.classifie(ii)
+            sumH += self.alphas[index] * (weak.classifie(ii) + s)
 
         return 1 if sumH >= 0.5 * sumAlphas else 0
                 

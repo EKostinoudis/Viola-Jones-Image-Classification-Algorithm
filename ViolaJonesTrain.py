@@ -6,10 +6,9 @@ from functools import partial
 
 
 class ViolaJonesTrain:
-    def __init__(self, T, threads = 4, positivePath = "positive", negativePath = "negative", 
+    def __init__(self, threads = 4, positivePath = "positive", negativePath = "negative", 
                     maxPositiveImages = -1, maxNegativeImages = -1):
         """
-        T: number of weak classifiers
         threads: number of threads to run parallel (on some computations)
         poitivePath: folder with the positive images
         negativePath: folder with the negative images
@@ -22,7 +21,6 @@ class ViolaJonesTrain:
         positiveNumber: number of positive images
         negativeNumber: number of negative images
         """
-        self.T = T
         self.threads = threads
         
         posImages = listdir(positivePath)
@@ -218,7 +216,16 @@ class ViolaJonesTrain:
         return (error, epsilon)
 
 
-    def trainModel(self):
+    def pureStrongClassifierTrain(self, T):
+        """
+        Creates a stong classifier of T weak classifiers using AdaBoost algorithm
+
+        Arguments:
+            T: number of weak classifiers
+
+        Returns:
+            StrongClassifier object
+        """
         # Calculate all posible features
         print("Creating features.")
         allFeatures = self.createFeatures()
@@ -229,7 +236,7 @@ class ViolaJonesTrain:
 
         #################################################################
         # AdaBoost algorithm
-        
+      
         alphas = []
         bestWeakClassifiers = []
 
@@ -238,8 +245,8 @@ class ViolaJonesTrain:
                                   np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
                                   ))
 
-        for itter in range(self.T):
-            print('{} out of {} weak clasifiers.'.format(itter + 1, self.T))
+        for itter in range(T):
+            print('{} out of {} weak clasifiers.'.format(itter + 1, T))
 
             # Normalize weights
             weights = weights / np.sum(weights)
@@ -285,19 +292,89 @@ class ViolaJonesTrain:
 
         strongClassifier = StrongClassifier(alphas, features, thresholds, polarities)
 
-        tp = tn = fp = fn = 0
-        for imClass, ii in zip(self.imageClass, self.trainingData):
-            retClass = strongClassifier.classify(ii)
-            if retClass == imClass:
-                if retClass == 1:
-                    tp += 1
-                else:
-                    tn += 1
-            elif retClass == 1:
-                fp += 1
-            else:
-                fn += 1
+        return (strongClassifier)
+
+
+    def trainModel(self):
+        # # Calculate all posible features
+        # print("Creating features.")
+        # allFeatures = self.createFeatures()
+
+        # # Calculate for every image the value of every feature
+        # print("Calculating features for all images.")
+        # featureValues = self.applyFeatures(allFeatures)
+
+        # #################################################################
+        # # AdaBoost algorithm
+        
+        # alphas = []
+        # bestWeakClassifiers = []
+
+        # # init weights
+        # weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
+        #                           np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
+        #                           ))
+
+        # for itter in range(self.T):
+        #     print('{} out of {} weak clasifiers.'.format(itter + 1, self.T))
+
+        #     # Normalize weights
+        #     weights = weights / np.sum(weights)
+
+        #     # Train all weak classifiers
+        #     print("\tTraining weak classifiers.")
+        #     weakClassifiers = self.trainWeakClassifiers(featureValues, weights)
+
+        #     # ((threshold, polarity, feature index),(error, epsilon)) of the best classifier
+        #     print("\tChoosing the best.")
+        #     bestWeak, (error, epsilon) = self.bestWeakClassifier(weakClassifiers, featureValues, weights)
+
+        #     epsilon = np.array(epsilon)
+
+        #     # Make sure error is not 0
+        #     if error == 0.0:
+        #         error = np.finfo(np.float32).eps
+
+        #     beta = error / (1.0 - error)
+
+        #     # Calculate new weights
+        #     weights = weights * (beta ** (1 - epsilon))
+
+        #     # Calculate alpha
+        #     alphas.append(np.log10(1 / beta))
+
+        #     bestWeakClassifiers.append(bestWeak)
+
+        # # End of AdaBoost algorithm
+        # #################################################################
+        # print('End of AdaBoost.')
+
+        # # Construct Stong classifier object
+        # features = []
+        # thresholds = []
+        # polarities = []
+
+        # for weak in bestWeakClassifiers:
+        #     threshold, polarity, index = weak
+        #     features.append(allFeatures[index])
+        #     polarities.append(polarity)
+        #     thresholds.append(threshold)
+
+        # strongClassifier = StrongClassifier(alphas, features, thresholds, polarities)
+
+        # # tp = tn = fp = fn = 0
+        # # for imClass, ii in zip(self.imageClass, self.trainingData):
+        # #     retClass = strongClassifier.classify(ii)
+        # #     if retClass == imClass:
+        # #         if retClass == 1:
+        # #             tp += 1
+        # #         else:
+        # #             tn += 1
+        # #     elif retClass == 1:
+        # #         fp += 1
+        # #     else:
+        # #         fn += 1
                 
 
-        # return features
-        return (tp, tn, fp, fn)
+        # # return features
+        # return (strongClassifier)
