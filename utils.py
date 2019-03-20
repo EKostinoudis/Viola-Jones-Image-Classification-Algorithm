@@ -195,7 +195,7 @@ class StrongClassifier:
         sumAlphas = sum(self.alphas)
         sumH = 0
         for index, weak in enumerate(self.weakClassifiers):
-            sumH += self.alphas[index] * (weak.classifie(ii) + s)
+            sumH += self.alphas[index] * (weak.classifie(ii) + self.s)
 
         return 1 if sumH >= 0.5 * sumAlphas else 0
                 
@@ -228,7 +228,7 @@ class Cascade:
             0: for negative classification
         """
         for strongClassifier in self.strongClassifiers:
-            if strongClassifier.classify == 0:
+            if strongClassifier.classify(ii) == 0:
                 return 0
 
         return 1

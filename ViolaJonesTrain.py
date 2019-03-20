@@ -32,7 +32,7 @@ class ViolaJonesTrain:
         if maxNegativeImages > -1:
             negImages = negImages[:maxNegativeImages]
 
-        self.positveNumber = len(posImages)
+        self.positiveNumber = len(posImages)
         self.negativeNumber = len(negImages)
 
         self.trainingData = []
@@ -241,7 +241,7 @@ class ViolaJonesTrain:
         bestWeakClassifiers = []
 
         # init weights
-        weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
+        weights = np.concatenate((np.full([self.positiveNumber], 1.0 / (2 * self.positiveNumber)),
                                   np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
                                   ))
 
@@ -377,7 +377,7 @@ class ViolaJonesTrain:
             polarities = []
 
             # init weights
-            weights = np.concatenate((np.full([self.positveNumber], 1.0 / (2 * self.positveNumber)),
+            weights = np.concatenate((np.full([self.positiveNumber], 1.0 / (2 * self.positiveNumber)),
                                     np.full([self.negativeNumber], 1.0 / (2 * self.negativeNumber))
                                     ))
 
@@ -432,7 +432,7 @@ class ViolaJonesTrain:
                 F = fp / self.negativeNumber
 
                 # detection rate
-                D = tp / (self.positveNumber + self.negativeNumber)
+                D = tp / (self.positiveNumber + self.negativeNumber)
 
                 while D < d * Dprev and s > -1:
                     s -= 0.01
@@ -444,12 +444,13 @@ class ViolaJonesTrain:
                     F = fp / self.negativeNumber
 
                     # detection rate
-                    D = tp / (self.positveNumber + self.negativeNumber)
+                    D = tp / (self.positiveNumber + self.negativeNumber)
 
             # Construct Stong classifier object
             strongClassifiers.append(StrongClassifier(alphas, features, thresholds, polarities, s))
 
             print("False positive rate: {} , Detection rate: {}".format(F, D))
+            print("False positives: {} , True positives: {} , Total positives, negatives: {}, {} ".format(fp, tp, self.positiveNumber, self.negativeNumber))
 
             if F > Ftarget:
                 # delete true negatives
@@ -465,4 +466,4 @@ class ViolaJonesTrain:
                 break
 
         cascade = Cascade(strongClassifiers)
-        return cascade
+        return (cascade, strongClassifiers)
