@@ -182,6 +182,16 @@ class StrongClassifier:
         self.s = s
 
     def classify(self, ii):
+        """
+        Classifies an image. (strong classifier)
+
+        Arguments:
+            ii: integral image
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
         sumAlphas = sum(self.alphas)
         sumH = 0
         for index, weak in enumerate(self.weakClassifiers):
@@ -190,5 +200,35 @@ class StrongClassifier:
         return 1 if sumH >= 0.5 * sumAlphas else 0
                 
             
+class Cascade:
+    def __init__(self, strongClassifiers):
+        """
+        strongClassifiers: list of strong classifiers
+        """
+        self.strongClassifiers = strongClassifiers
 
-    
+    def addStrongClassifier(self, strongClassifier):
+        """
+        Adds a strong classifier to the cascade
+
+        Argument:
+            strongClassifier: a StrongClassifier object
+        """
+        self.strongClassifiers.append(strongClassifier)
+
+    def classify(self, ii):
+        """
+        Classifies an image. (cascaded classifier)
+
+        Arguments:
+            ii: integral image
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
+        for strongClassifier in self.strongClassifiers:
+            if strongClassifier.classify == 0:
+                return 0
+
+        return 1

@@ -1,4 +1,4 @@
-from utils import readImage, integralImage, Feature, StrongClassifier
+from utils import readImage, integralImage, Feature, StrongClassifier, Cascade
 import numpy as np
 from os import listdir
 from multiprocessing import Pool
@@ -347,6 +347,9 @@ class ViolaJonesTrain:
             Ftarget: overall false positive rate
             f: maximum acceptable false positive rate per layer
             d: minimum acceptable detection rate per layer
+
+        Returns:
+            a Cascade object
         """
         # Calculate all posible features
         print("Creating features.")
@@ -446,6 +449,8 @@ class ViolaJonesTrain:
             # Construct Stong classifier object
             strongClassifiers.append(StrongClassifier(alphas, features, thresholds, polarities, s))
 
+            print("False positive rate: {} , Detection rate: {}".format(F, D))
+
             if F > Ftarget:
                 # delete true negatives
                 featureValues = np.delete(featureValues, tnIndex, 1)
@@ -459,4 +464,5 @@ class ViolaJonesTrain:
             else:
                 break
 
-        return strongClassifiers
+        cascade = Cascade(strongClassifiers)
+        return cascade
