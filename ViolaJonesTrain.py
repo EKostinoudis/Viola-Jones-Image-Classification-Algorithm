@@ -438,8 +438,8 @@ class ViolaJonesTrain:
                 # detection rate
                 D = tp / (self.positiveNumber + self.negativeNumber)
 
-                while D < d * Dprev and s > -1:
-                    s -= 0.01
+                while D < d * Dprev:
+                    s += 0.01
     
                     # evaluate classifier
                     tp, fp, tnIndex = self.evaluateClassifier(featureValues, alphas, featuresIndex, thresholds, polarities, s)
