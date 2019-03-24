@@ -210,11 +210,14 @@ class StrongClassifier:
                 
             
 class Cascade:
-    def __init__(self, strongClassifiers):
+    def __init__(self, strongClassifiers, shape):
         """
         strongClassifiers: list of strong classifiers
+        shape: tuple with the shape of the training images (height, width)
         """
         self.strongClassifiers = strongClassifiers
+        self.shape = shape
+
 
     def addStrongClassifier(self, strongClassifier):
         """

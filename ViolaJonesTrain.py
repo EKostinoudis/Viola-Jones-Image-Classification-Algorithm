@@ -344,7 +344,7 @@ class ViolaJonesTrain:
     def cascadeModelTrain(self, Ftarget, f, d, save = True, filename = "output.pkl"):
         """
         Arguments:
-            Ftarget: overall false positive rate
+            Ftarget: overall false positive rate200
             f: maximum acceptable false positive rate per layer
             d: minimum acceptable detection rate per layer
             save: boolean for saving the cascade
@@ -353,6 +353,8 @@ class ViolaJonesTrain:
         Returns:
             a Cascade object
         """
+        imageShape = self.trainingData[0].shape
+
         # Calculate all posible features
         print("Creating features.")
         allFeatures = self.createFeatures()
@@ -467,7 +469,7 @@ class ViolaJonesTrain:
             else:
                 break
 
-        cascade = Cascade(strongClassifiers)
+        cascade = Cascade(strongClassifiers, imageShape)
 
         if save:
             print("Saving the cascade.")
