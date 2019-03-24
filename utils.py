@@ -56,6 +56,38 @@ class Rectangle:
 
             return value
 
+        def calculateRectOff(self, ii, xoff, yoff):
+            """
+            calulates the value of the rectangle region 
+            given the integral image (ii) and a offset
+
+            arguments:
+                ii: integral image (numpy array)
+                xoff: offset on x axis
+                yoff: offset on y axis
+
+            returns:
+                value of the sum of all points in the rectagle region
+            """
+            x , y = self.x + xoff, self.y + yoff
+
+            if x == 0:
+                if y != 0:
+                    value = ii[y + self.height  - 1][x + self.width - 1] -\
+                            ii[y - 1]               [x + self.width - 1]
+                else:
+                    value = ii[y + self.height - 1][x + self.width - 1]
+            elif y == 0:
+                value = ii[y + self.height - 1][x + self.width - 1] -\
+                        ii[y + self.height - 1][x - 1]
+            else:         
+                value = ii[y - 1]              [x - 1] +\
+                        ii[y + self.height - 1][x + self.width - 1] -\
+                        ii[y - 1]              [x + self.width - 1] -\
+                        ii[y + self.height - 1][x - 1]    
+
+            return value
+
 class Feature:
     def __init__(self, ftype, x, y, width, height):
         """ 
@@ -121,6 +153,11 @@ class Feature:
         pos = sum([x.calculateRect(ii) for x in self.positive])
         neg = sum([x.calculateRect(ii) for x in self.negative])
         return pos - neg
+
+    def calculateOff(self, ii, xoff, yoff):
+        pos = sum([x.calculateRectOff(ii, xoff, yoff) for x in self.positive])
+        neg = sum([x.calculateRectOff(ii, xoff, yoff) for x in self.negative])
+        return pos - neg
          
 
 class WeakClassifier:
@@ -146,6 +183,22 @@ class WeakClassifier:
             0: for negative classification
         """
         f = self.feature.calculate(ii)
+        return 1 if self.polarity * f < self.polarity * self.threshold else 0
+
+    def classifieOff(self, ii, xoff, yoff):
+        """
+        Classifies an image given an offset.
+
+        Arguments:
+            ii: integral image
+            xoff: offset on x axis
+            yoff: offset on y axis
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
+        f = self.feature.calculateOff(ii, xoff, yoff)
         return 1 if self.polarity * f < self.polarity * self.threshold else 0
 
 class StrongClassifier:
@@ -207,6 +260,26 @@ class StrongClassifier:
             sumH += self.alphas[index] * (weak.classifie(ii) + self.s)
 
         return 1 if sumH >= 0.5 * sumAlphas else 0
+    
+    def classifyOff(self, ii, xoff, yoff):
+        """
+        Classifies an image given an offset. (strong classifier)
+
+        Arguments:
+            ii: integral image
+            xoff: offset on x axis
+            yoff: offset on y axis
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
+        sumAlphas = sum(self.alphas)
+        sumH = 0
+        for index, weak in enumerate(self.weakClassifiers):
+            sumH += self.alphas[index] * (weak.classifieOff(ii, xoff, yoff) + self.s)
+
+        return 1 if sumH >= 0.5 * sumAlphas else 0
                 
             
 class Cascade:
@@ -241,6 +314,25 @@ class Cascade:
         """
         for strongClassifier in self.strongClassifiers:
             if strongClassifier.classify(ii) == 0:
+                return 0
+
+        return 1
+
+    def classifyOff(self, ii, xoff, yoff):
+        """
+        Classifies an image given an offset. (cascaded classifier)
+
+        Arguments:
+            ii: integral image
+            xoff: offset on x axis
+            yoff: offset on y axis
+
+        Returns:
+            1: for positive classification
+            0: for negative classification
+        """
+        for strongClassifier in self.strongClassifiers:
+            if strongClassifier.classifyOff(ii, xoff, yoff) == 0:
                 return 0
 
         return 1
