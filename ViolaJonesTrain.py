@@ -341,12 +341,14 @@ class ViolaJonesTrain:
 
         return (tp, fp, tnIndex)
 
-    def cascadeModelTrain(self, Ftarget, f, d):
+    def cascadeModelTrain(self, Ftarget, f, d, save = True, filename = "output.pkl"):
         """
         Arguments:
             Ftarget: overall false positive rate
             f: maximum acceptable false positive rate per layer
             d: minimum acceptable detection rate per layer
+            save: boolean for saving the cascade
+            filename: name of the file to save the cascade
 
         Returns:
             a Cascade object
@@ -466,4 +468,9 @@ class ViolaJonesTrain:
                 break
 
         cascade = Cascade(strongClassifiers)
-        return (cascade, strongClassifiers)
+
+        if save:
+            print("Saving the cascade.")
+            cascade.saveCascade(filename)
+
+        return cascade

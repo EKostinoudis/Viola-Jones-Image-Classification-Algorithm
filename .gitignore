@@ -1,3 +1,6 @@
+*.pkl
+test.py
+
 # Data
 positive/*
 negative/*

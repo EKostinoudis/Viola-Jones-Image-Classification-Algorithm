@@ -1,11 +1,20 @@
 from PIL import Image
 import numpy as np
+import pickle
 
 def readImage(address):
     return np.array(Image.open(address).convert('L'))
 
 def integralImage(image):
     return image.cumsum(axis=1).cumsum(axis=0)
+
+def saveObject(obj, filename):
+    with open(filename, 'wb') as output:
+        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+
+def loadObject(filename):
+    with open(filename, 'rb') as input:
+        return pickle.load(input)
 
 class Rectangle:
         def __init__(self, x, y, width, height):
@@ -232,3 +241,16 @@ class Cascade:
                 return 0
 
         return 1
+
+    def saveCascade(self, filename):
+        """
+        Saves the class object into a file
+
+        Arguments:
+            filename: name of the file
+        """
+        saveObject(self, filename)
+
+    @staticmethod
+    def loadCascade(filename):
+        return loadObject(filename)
