@@ -98,8 +98,9 @@ class ViolaJonesTrain:
             2D numpy array with the values of the features
         """
 
-        pool = Pool(self.threads)
-        featureValues = pool.map(partial(self.calculateFeatures, features=features), self.trainingData)
+        # pool = Pool(self.threads)
+        # featureValues = pool.map(partial(self.calculateFeatures, features=features), self.trainingData)
+        featureValues = list(map(partial(self.calculateFeatures, features=features), self.trainingData))
 
         return np.array(featureValues).T
 
